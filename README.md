@@ -2,7 +2,11 @@
 
 December 2019, Markus Konrad <markus.konrad@wzb.eu> / <post@mkonrad.net> / [Berlin Social Science Center](https://www.wzb.eu/en)
 
-**This project is currently not maintained.**
+## Modifications
+
+- Automated download of TIGER Corpus
+- tidy up dependencies
+
 
 ## A lemmatizer for German language text
 
@@ -25,13 +29,15 @@ pip install -U germalemma
 In order to use GermaLemma, you will need to install some additional packages (see *Requirements* section below) and then download the [TIGER corpus from the University of Stuttgart](http://www.ims.uni-stuttgart.de/forschung/ressourcen/korpora/tiger.html). You will need to use the CONLL09 format, *not* the XML format.
 The corpus is free to use for non-commercial purposes (see [License Agreement](http://www.ims.uni-stuttgart.de/forschung/ressourcen/korpora/TIGERCorpus/license/htmlicense.html)).
 
-Then, you should convert the corpus into pickle format for faster loading by executing `germalemma/__init__.py` and passing the path to the corpus file in CONLL09 format:
 
-```
-python germalemma/__init__.py tiger_release_[...].conll09
+You can use `germalemma.GermaLemma.download_tiger()` to read the License Agreement and download the corpus:
+
+```python
+import germalemma
+
+germalemma.GermaLemma.download_tiger()
 ```
 
-This will place a `lemmata.pickle` file in the `data` directory which is then automatically loaded.
 
 ## Part-of-Speech (POS) Tagging
 

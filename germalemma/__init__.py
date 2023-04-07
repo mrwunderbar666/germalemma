@@ -28,16 +28,22 @@ __version__ = '0.1.3'
 
 import sys
 import os
+import io
 import codecs
 import pickle
+import tarfile
 from collections import defaultdict
 from importlib import import_module
 
 from pyphen import Pyphen
-
+import requests
 
 MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_LEMMATA_PICKLE = os.path.join(MODULE_PATH, 'data', 'lemmata.pickle')
+
+CORPUS_URL = "https://www.ims.uni-stuttgart.de/documents/ressourcen/korpora/tiger-corpus/download/tigercorpus-2.2.conll09.tar.gz"
+CORUPS_LICENSE = os.path.join(MODULE_PATH, 'tiger_license.txt')
+
 
 # valid part-of-speech prefixes
 VALID_POS_PREFIXES = ('N', 'V', 'ADJ', 'ADV')
@@ -263,6 +269,73 @@ class GermaLemma(object):
                     cls.add_to_lemmata_dicts(lemmata, lemmata_lower, token, lemma, pos)
 
         return lemmata, lemmata_lower
+    
+    @classmethod
+    def download_tiger(cls,
+                       url=CORPUS_URL):
+        # Check if already downloaded
+        if os.path.exists(DEFAULT_LEMMATA_PICKLE):
+            print(f'TIGER Corpus already downloaded, at loaction {DEFAULT_LEMMATA_PICKLE}')
+            choice = input('Download the corpus again? Enter: yes or no\n')
+            if choice.lower() != 'yes':
+                print('Aborting...')
+                return None
+        # License Agreement
+        print('The TIGER Corpus is not part of this package and has a License agreement for academic purposes')
+        choice = input('Do you want to read the License? Enter: yes or no (abort)\n')
+        if choice.lower() != 'yes':
+            print('You have to read the license, before proceeding. Aborting...')
+            return None
+        
+        with open(CORUPS_LICENSE) as f:
+            license_text = f.read()
+
+        print()
+        print('-'*80)
+        print(license_text)
+        print('-'*80)
+        print()
+        choice = input('Do you agree with above terms and conditions? Enter: yes or no (abort)\n')
+        if choice.lower() != 'yes':
+            print('Aborting...')
+            return None
+        
+        print('Downloading corpus files...')
+        # download
+        r = requests.get(url, stream=True)
+        corpus_buffer = io.BytesIO(r.content)
+        tar = tarfile.open(fileobj=corpus_buffer, mode='r:gz')
+        corpus = tar.extractfile(tar.members[0])
+
+        print('Success!')
+        print('Parsing corpus...')
+
+        lemmata, lemmata_lower = cls.load_tiger_tar(corpus)
+
+        print('Success!')
+        print('Writing corpus to local pickle file...')
+        with open(DEFAULT_LEMMATA_PICKLE, 'wb') as f:
+            pickle.dump((lemmata, lemmata_lower), f, protocol=2)
+
+        print('Success!')
+
+        print('You can now use the lemmatizer: lemmatizer = GermaLemma()')
+
+
+    @classmethod
+    def load_tiger_tar(cls, corpus):
+        lemmata = defaultdict(dict)
+        lemmata_lower = defaultdict(dict)
+
+        for line in corpus.readlines():
+            parts = line.decode('utf-8').split()
+            if len(parts) == 15:
+                token, lemma = parts[1:3]
+                pos = parts[4]
+                cls.add_to_lemmata_dicts(lemmata, lemmata_lower, token, lemma, pos)
+
+        return lemmata, lemmata_lower
+    
 
     @staticmethod
     def add_to_lemmata_dicts(lemmata, lemmata_lower, token, lemma, pos):
